@@ -1,0 +1,8 @@
+{
+    "require": {
+        "php": ">=7.0",
+        "slim/slim": "^3.11",
+        "illuminate/database": "^5.2",
+        "stripe/stripe-php": "^6.19"
+    }
+}

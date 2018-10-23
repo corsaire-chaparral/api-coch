@@ -1,0 +1,1 @@
+rsync -v public/index.php louis@api-test.corsaire-chaparral.org:/var/www/api-test.corsaire-chaparral.org/public/index.php
