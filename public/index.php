@@ -18,7 +18,7 @@ $capsule->bootEloquent();
 
 
 $app->get('/', function () {
-    echo 'Bonjour! :) <br/> <br/>';
+    echo 'Bonjour! Vous avez bien rejoint l\'API Corsaire-Chaparral :) <br/> <br/>';
 });
 
 $app->group('/v1', function() use ($app) {
@@ -32,31 +32,65 @@ $app->group('/v1', function() use ($app) {
         $email     = $_POST['email'];
         $category  = '(unspecified)';
       
-        if (!empty($app->request->params('category'))) {
-            switch ($app->request->params('category')) {  
+        $requestBody = $request->getParsedBody();
+      
+        if (!empty($requestBody['category'])) {
+            switch ($requestBody['category']) {
               case 'inscription2018-2019' :
-                  $category = $app->request->params('category');
+                  $category = $requestBody['category'];
+                  break;
             };
-          
         }
 
-        // Charge the user's card
-        $charge = \Stripe\Charge::create(array(
-            'amount' => $amount,
-            'currency' => 'cad',
-            'description' => 'Paiement d’inscription 2018-2019 pour ' . $firstName . ' ' . $lastName,
-            'source' => $token,
-            'metadata' => array(
-                'email'     => $email,
-                'firstName' => $firstName,
-                'lastName'  => $lastName,
-                'category'  => $category
-            )
-        ));
+        try {
+            // Charge the user's card
+            $charge = \Stripe\Charge::create(array(
+                'amount' => $amount,
+                'currency' => 'cad',
+                'description' => 'Paiement d’inscription 2018-2019 pour ' . $firstName . ' ' . $lastName,
+                'source' => $token,
+                'metadata' => array(
+                    'email'     => $email,
+                    'firstName' => $firstName,
+                    'lastName'  => $lastName,
+                    'category'  => $category
+                ),
+                'receipt_email' => $email
+            ));
 
-        $decimalAmount = substr_replace($amount, ',', -2, 0);
+            $decimalAmount = substr_replace($amount, ',', -2, 0);
 
-      return $response->write("<h1>Paiement de $decimalAmount $</h1>");
+            mail(
+                'admin@corsaire-chaparral.org,corsairechaparal@hotmail.com',
+                '[API Corsaire-Chaparral] [Stripe] Paiement reçu',
+                "Un nouveau paiement a été effectuée sur corsaire-chaparral.org
+
+
+                Nom : $firstName $lastName
+                Catégorie : $category
+                Montant : $amount
+                "
+            );
+
+          return $response->write("<h1>Paiement de $decimalAmount $ réussi avec succès!</h1>");
+        } catch (Exception $e) {
+            mail(
+                'admin@corsaire-chaparral.org',
+                '[API Corsaire-Chaparral] [Stripe] ERREUR',
+                "Une erreur est survenue lors d’un paiement sur corsaire-chaparral.org
+
+                ERREUR :
+                $e
+
+                Nom : $firstName $lastName
+                Catégorie : $category
+                Montant : $amount
+                "
+            );
+          
+          $response->code(500);
+          return $response->write("<h1>Le paiement a échoué.</h1>");
+        }
     });
 });
 
